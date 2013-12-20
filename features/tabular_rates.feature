@@ -11,7 +11,7 @@ Feature: Tabular Rates
       <table>
         <tr><td>   </td> <td>Cash  </td> <td>Cheque</td> <td>Cash & Cheque</td></tr>
         <tr><td>   </td> <td>BUY   </td> <td>BUY   </td> <td>SELL  </td> </tr>
-        <tr><td>USD</td> <td>101.30</td> <td>103.30</td> <td>105.00</td> </tr>
+        <tr><td>US$</td> <td>101.30</td> <td>103.30</td> <td>105.00</td> </tr>
         <tr><td>GBP</td> <td>166.20</td> <td>169.63</td> <td>173.30</td> </tr>
         <tr><td>CAD</td> <td> 94.51</td> <td> 96.92</td> <td> 99.72</td> </tr>
         <tr><td>EUR</td> <td>      </td> <td>137.42</td> <td>143.16</td> </tr>
@@ -22,6 +22,8 @@ Feature: Tabular Rates
     When the column options exist for the tabular rates parser:
       | currency_code | buy_cash | buy_draft | sell_cash | sell_draft |
       | 0             | 1        | 2         | 3         | 3          |
+    And the currency translations:
+      | US$ | USD |
     Then parsing the table should return the following rates:
       | currency_code | buy_cash | buy_draft | sell_cash | sell_draft |
       | USD           | 101.30   | 103.30    | 105.00    | 105.00     |

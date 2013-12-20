@@ -1,8 +1,9 @@
 module Forex
   class TabularRates
-    NoSuchColumn = Class.new(StandardError)
 
-    attr_accessor :table, :options
+    attr_accessor :table, :options, :translations
+
+    COLUMN_LABELS = [:buy_cash, :buy_draft, :sell_cash, :sell_draft]
 
     DEFAULT_OPTIONS = {
       currency_code: 0,
@@ -12,9 +13,10 @@ module Forex
       sell_draft: 4,
     }
 
-    def initialize(table, options = DEFAULT_OPTIONS)
+    def initialize(table, options = DEFAULT_OPTIONS, translations = Hash.new)
       @table = table
       @options = options.symbolize_keys
+      @translations = translations
     end
 
     def parse_rates
@@ -22,30 +24,49 @@ module Forex
 
       table.css('tr').each_with_object({}) do |tr, currencies|
         cells = tr.css('td')
-        next if cells.empty?
+        return if cells.empty?
 
-        currency_code = CurrencyCode.new(cells[currency.to_i].content)
+        raw_currency_code = Currency.new(cells[currency.to_i].content).to_s
+        puts "raw_currency_code=#{raw_currency_code}"
+        translated_currency_code  = translations.fetch(raw_currency_code, raw_currency_code)
+        currency_code = Currency.new(translated_currency_code)
 
         next if currencies.has_key?(currency_code.to_s) || currency_code.invalid?
 
-        currencies[currency_code.to_s] = column_labels.each_with_object({}) do |column_label, rates|
-          next unless rate_column = options[column_label]
+        currency_rates = {
+          currency_code.to_s =>
+            RowParser.new(cells, options).parse_currency_rates
+        }
 
-          rate_node = cells[rate_column.to_i]
-          raise NoSuchColumn, "#{column_label} (#{rate_column}) does not exist in table" unless rate_node
-
-          rates[column_label.to_sym] = Currency.new(rate_node.content).value
-        end
+        currencies.merge!(currency_rates) #if currency_rates
       end
-    end
-
-    def column_labels
-      [:buy_cash, :buy_draft, :sell_cash, :sell_draft]
     end
 
   end
 
-  class Currency
+  class RowParser
+    NoSuchColumn = Class.new(StandardError)
+
+    attr_accessor :cells, :options
+
+    def initialize(cells, options)
+      @cells = cells
+      @options = options
+    end
+
+    def parse_currency_rates
+      TabularRates::COLUMN_LABELS.each_with_object({}) do |column_label, rates|
+        next unless rate_column = options[column_label]
+
+        rate_node = cells[rate_column.to_i]
+        raise NoSuchColumn, "#{column_label} (#{rate_column}) does not exist in table" unless rate_node
+
+        rates[column_label.to_sym] = Money.new(rate_node.content).value
+      end
+    end
+  end
+
+  class Money
 
     def initialize(string)
       @string = string
@@ -59,7 +80,7 @@ module Forex
 
   end
 
-  class CurrencyCode
+  class Currency
     def initialize(string)
       @string = string
     end
@@ -75,13 +96,12 @@ module Forex
     end
 
     def to_s
-      @string.strip.
+      @string.strip#.
         # Replace currency symbols with letter equivalent
         # TODO go crazy and add the rest http://www.xe.com/symbols.php
-        gsub('$', 'D').
 
         # Remove all non word charactes ([^A-Za-z0-9_])
-        gsub(/\W/,'')
+        # gsub(/\W/,'')
 
     end
   end
